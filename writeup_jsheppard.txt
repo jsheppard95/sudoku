@@ -1,0 +1,179 @@
+Jackson Sheppard
+CS16, Summer Session C 2016
+8/26/16
+
+Sudoku Final Project Writeup:
+
+	Sudoku consists of a nine by nine cell game board with set initial values and blank spaces. The player must fill in the blank spaces with integers from one to nine, ensuring that a single integer does not appear twice in any row, column, or three by three box of integers. The puzzle is solved when all blank spaces are filled with integers following the previous rules. This program employs recursive backtracking as a form of trial and error to find a solution to either a four by four or nine by nine sudoku puzzle with any set of initial values.
+
+Approach:
+	
+	Following the main() function for the sudoku.cpp file, the first task is to open a sudoku file with the puzzle and transfer the initial values to a data structure. 
+
+displayBoard(ifstream& infile, string filename):
+
+	The void function displayBoard() opens the sudoku input file and displays the initial puzzle to the console. It uses an embedded function openFile() that connects the filename to the input stream and reports an error message if unable to do so. It then prints the initial puzzle line by line and closes the input file.
+
+fillVector(vector<vector<int>>& gameboard, vector<int>& cols, ifstream& infile, string filename);
+
+	After displaying the initial puzzle, the void function fillVector() reopens the input file to read from the beginning and transfers each integer into a two dimensional vector “gameboard”, designating each blank space with a zero. It iterates through each character in each line of the input file (ignoring borders), and adds either the present integer or zero to the “cols” vector in the order received. It then adds the “cols” vector to the “gameboard” matrix at the end of each line. The result is either a four by four or nine by nine matrix representing the initial puzzle.
+
+global GAME_SIZE:
+
+	After calling the function fillVector(), the global variable GAME_SIZE updates to the size of the input file. This serves as the maximum number of iterations to reach each cell in the puzzle as well as the highest integer legal to play in the game. This algorithm supports either four by four (integers 1-4) or nine by nine (integers 1-9) sudoku puzzles.
+
+isValid(vector<vector<int>>& gameboard, int row, int col, int poss_value): 
+
+	After the puzzle is stored in the two dimensional vector, the void function display_poss_values() prints the possible integers at each cell subject to the initial sudoku arrangement. It uses a boolean function isValid() that returns true if a number “poss_value” is legal to place at a particular “row” and “col”, in the matrix. This function uses three inner boolean functions inRow(), inCol(), and inBox(). Each return true if “poss_value” is found in a particular row, column, or box. The function isValid() will then return true only if inRow(), inCol(), and inBox() all return false, indicating the number can be legally placed at the specified row and column.
+
+inRow(), inCol(), and inBox():
+
+	The functions inRow() and inCol() simply iterate through the column elements of a specific row and the row elements of specific column, respectively, in order to check if “poss_value” is valid for the cell. In order to check each box, inBox() must always start the search from the top left corner of each box enclosing the cell in question (“row”/“col” pair), regardless of the actual values passed to “row” and “col” in isValid(). For the nine by nine matrix, this requires both the “row” and “col” indices to be either zero or multiples of three. The reasoning is due to the layout of the “gameboard” matrix, shown below:
+
+	columns:
+         0 1 2 3 4 5 6 7 8
+	 ||||||||||||||||||
+rows: 0: 0 0 0 6 0 0 4 0 0
+      1: 7 0 0 0 0 3 6 0 0
+      2: 0 0 0 0 9 1 0 8 0     // Example of “gameboard” matrix made from 2D vector
+      3: 0 0 0 0 0 0 0 0 0     // Integers > 0 are fixed values
+      4: 0 5 0 1 8 0 0 0 3     // 0’s correspond to blank spaces
+      5: 0 0 0 3 0 6 0 4 5
+      6: 0 4 0 2 0 0 0 6 0
+      7: 9 0 3 0 0 0 0 0 0
+      8: 0 2 0 0 0 0 1 0 0
+
+Considering “row” = 0 and “col” = 0 to be the first top left corner, the indices that are multiples of three represent the top left corner of any three by three box. To ensure of this condition, the function isValid() calls inBox() in the following way:
+
+	inBox(gameboard, row - row % 3, col - col % 3, poss_value)
+
+This forces “top_left_Row” and “top_left_Col” to always take on the correct values as shown:
+	input:         output = input - input % 3:
+	0		0
+	1		0
+	2		0
+	3		3
+	4		3
+	5		3
+	6		6
+	7		6
+	8		6
+
+A similar condition ensures that “top_left_Row” and “top_left_Col” receive either 0 or multiples of two when “GAME_SIZE” is set to four, and calls inBox() with:
+
+	inBox(gameboard, row - row % 2, col - col % 2, poss_value)
+
+This expression behaves similarly to that of the “GAME_SIZE” = 9 case but instead returns only 0 or multiples of two. 
+
+display_poss_values(vector<vector<int>>& gameboard):
+
+	In order to display the possible values subject to the initial arrangement at each empty cell, this void function finds a zero in the matrix and executes the following code:
+
+	// gameboard = 2D vector representing sudoku matrix
+	// row = current row in matrix
+	// col = current column in matrix
+	for(integer = 0; integer < GAME_SZE; integer++) {
+		if( isValid(gameboard, row, col, integer) == true ) {
+			cout << integer;
+		}
+	}
+
+The function therefore iterates through each empty cell in the “gameboard” matrix and prints the valid integers from one to “GAME_SIZE”.
+
+find_next_Zero(vector<vector<int>>& gameboard, int& row, int& col):
+
+	This boolean function serves the task of finding the next zero in the “gameboard” matrix and storing the indices in the “row” and “column” arguments accordingly. When it returns false, it serves as the stopping condition for the recursive function SolveSudoku(), indicating there are no more zeroes left in the “gameboard” matrix and the puzzle is fully solved.
+
+SolveSudoku(vector<vector<int>>& gameboard):
+
+	After printing the possible values, the boolean function SolveSudoku() updates the sudoku matrix with the correct values. It returns true if a possible solution exits and changes the matrix accordingly, and returns false after trying all possible options. It does so through an algorithm known as recursive backtracking that tries all possible valid arrangements in numerically increasing order starting at the top left cell until a correct solution is found. The following code accomplishes this task:
+
+	// Find first 0 in gameboard matrix,
+	// store indices in “row”/“col” accordingly
+	curr_zero = find_next_Zero(gameboard, row, col);
+	// true if 0 found, false if puzzle solved
+	// Stopping condition:
+	if( curr_zero == false) {
+		return true;
+	}
+	for(int num = 1; num <= GAME_SIZE; num++) {
+	// At each 0, try integers 1-9
+		if( isValid(gameboard, row, col, num) == true ) {
+			// Update gameboard with “num”
+			gameboard[row][col] = num;	
+			// Recursive call:
+			if( SolveSudoku(gameboard) == true ) {
+				return true;
+			}
+			// Number was valid initially, but later caused conflict
+			// reset cell to 0 and try next integer
+			gameboard[row][col] = 0;
+		}
+	}
+	// Numbers 1-9 tried at a particular cell
+	// All lead to invalid solutions
+	return false;
+
+At the first zero in the “gameboard” matrix, the function isValid() will eventually return true when passed an integer from one to “GAME_SIZE”. At this point the cell is updated with the valid integer, and SolveSudoku() is recursively called. This causes a stack to build with SolveSudoku() on a new level with a now updated “gameboard” matrix. The function find_next_Zero() will update “row” and “col” with the indices of the next zero in the matrix and isValid() will find a correct value for the new cell. This process continues until all numbers from one to “GAME_SIZE” are invalid at a particular cell, at which point the most recent SolveSudoku() call will return false, causing all previous calls (except for the call in main()) to also return false. At this point the cell is reset to 0 and the process continues with the next valid integer. If all integers from one to GAME_SIZE eventually return false, the call to SolveSudoku() in main() will return false, indicating there is no possible solution to the initial puzzle. If instead a solution is eventually found, the function find_next_Zero() will return false, causing SolveSudoku() to return true and return to main() to finish execution. The result is an updated “gameboard” matrix with the correct values.
+
+output_solved_Puzzle(vector<vector<int>>& gameboard, ofstream& outfile, string outfile_name) and output_4by4_puzzle(vector<vector<int>>& gameboard, ofstream& outfield, string outfile_name)
+
+	After the matrix has the correct values, the functions output_solved_Puzzle() and output_4by4_puzzle() print the contents of “gameboard” to the console and an output file in the same format as the original input file. The correct function is called through a conditional statement checking the variable “GAME_SIZE”. In both cases, the output file is named as follows:
+	
+	outfile_name = filename.substr(0, filename.length() - 4) + “_ANSWERS.txt”
+
+causing the output file to store in the same location as the input file under the same name appended with “_ANSWERS.txt”
+
+	After calling an output function, the main() function closes the remaining file streams and returns a 0 to designate the end of execution.
+
+Challenges Faced:
+	
+	Prior to using recursion, I attempted to solve the problem using for loops by iterating through each cell and calling isValid with integers until it returns true. However, there was no way to know which cell to return to when a previously valid number led to no solution. The recursive call served this purpose, leaving a pointer in memory to each call, thus allowing for multiple solution attempts at any cell until a correct combination is found.
+
+	With more time, I would improve the function print_possible_Values() to improve formatting. The goal of this function was to set up a grid and evenly space the possible values at each cell regardless quantity. The function setw() did add fill spacing but added spaces to the right of the current line position, something constantly changing. This made it difficult to always align  the sudoku grid of any initial puzzle using the current algorithm.
+ 
+Setting up and Compiling the Program:
+
+	The sudoku project folder contains four input test files: sudoku_input.txt, sudoku_2.txt, unsolvable.txt, and sudoku_4by4.txt (extra credit), the source code file, sudoku.cpp, and this summary file. The source code should be compiled in a terminal window as follows:
+
+	$ g++ -std=c++11 -o sudoku sudoku.cpp
+
+and following command runs the program:
+
+	$ ./sudoku
+
+	When run, the sudoku program will prompt the user to “Enter filename:”. The user should then enter the sudoku input file name containing the initial puzzle. If the input file is not currently in the directory in which the program is running, the user should enter the full file path, for example:
+	
+	Enter filename:
+	/Users/JacksonSheppard/Desktop/sudoku/sudoku_input.txt
+
+Since the output file name simply removes “.txt” and adds “_ANSWERS.txt” to the input file name, the output file will always store in the same directory as the input file.
+
+The contents of the nine by nine sudoku file should be organized as follows:
+-------------
+|   |6  |4  |
+|7  |  3|6  |
+|   | 91| 8 |
+-------------
+|   |   |   |
+| 5 |18 |  3|
+|   |3 6| 45|
+-------------
+| 4 |2  | 6 |
+|9 3|   |   |
+| 2 |   |1  |
+-------------
+
+The horizontal borders are 13 “-“ (hyphen) characters and the vertical dividers are “|” (vertical bar) characters placed at the beginning of each line and after every third space or entry. Empty cells should be one space only, and there should be no trailing whitespace following the last “-“ at the end of the text.
+The contents of the four by four sudoku file are organized in the same format:
+-------
+|  |4 |
+|1 |  |
+-------
+|  | 3|
+| 1|  |
+-------
+The horizontal borders instead consist of 7 “-“ (dash) characters and the vertical dividers (“|”) are placed at the beginning of each line and after every two spaces.
+
+	The “unsolvable.txt” file contains a puzzle with no valid solution and causes the program to output a message informing the user of this. This program can therefore read and solve any four by four or nine by nine sudoku puzzle organized as shown above. It places valid integers at each empty cell in the sudoku grid given the initial arrangement and determines if they will lead to valid solutions. It does so until the puzzle is fully solved and outputs the results to the user.
+
